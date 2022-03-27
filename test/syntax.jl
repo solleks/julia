@@ -3276,3 +3276,13 @@ end
     @test m.Foo.bar === 1
     @test Core.get_binding_type(m.Foo, :bar) == Any
 end
+
+@testset "issue 25072" begin
+    @test '\xc0\x80' == reinterpret(Char, 0xc0800000)
+    @test '\x80' == reinterpret(Char, 0x80000000)
+    @test '\xff' == reinterpret(Char, 0xff000000)
+    @test '\xff\xff\xff\xff' == reinterpret(Char, 0xffffffff)
+    @test 'abcd' == reinterpret(Char, 0x61626364)
+    @test_throws ParseError Meta.parse("''")
+    @test_throws ParseError Meta.parse("'\\xff\\xff\\xff\\xff\\xff'")
+end

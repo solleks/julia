@@ -579,7 +579,8 @@ static jl_value_t *scm_to_julia_(fl_context_t *fl_ctx, value_t e, jl_module_t *m
         }
         else if (sym == jl_julia_char_sym) {
             value_t v = car_(e);
-            assert(iscprim(v) && cp_class((cprim_t*)ptr(v)) == fl_ctx->uint32type);
+            if (!(iscprim(v) && cp_class((cprim_t*)ptr(v)) == fl_ctx->uint32type))
+                jl_error("malformed julia char");
             uint32_t c = *(uint32_t*)cp_data((cprim_t*)ptr(v));
             temp = jl_box_char(c);
         }

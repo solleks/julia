@@ -434,7 +434,7 @@ value_t fl_string_only_julia_char(fl_context_t *fl_ctx, value_t *args, uint32_t 
     argcount(fl_ctx, "string.only-julia-char", nargs, 1);
     if (!fl_isstring(fl_ctx, args[0]))
         type_error(fl_ctx, "string.only-julia-char", "string", args[0]);
-    char *s = (char*)cvalue_data(args[0]);
+    uint8_t *s = (uint8_t*)cvalue_data(args[0]);
     size_t len = cv_len((cvalue_t*)ptr(args[0]));
     if (!(0 < len && len <= 4))
         return fl_ctx->F;
