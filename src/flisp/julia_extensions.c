@@ -361,6 +361,87 @@ value_t fl_string2normsymbol(fl_context_t *fl_ctx, value_t *args, uint32_t nargs
     return symbol(fl_ctx, normalize(fl_ctx, (char*)cvalue_data(args[0])));
 }
 
+// void bounds_error(size_t len, size_t i) {
+//     lerrorf(fl_ctx, fl_ctx->BoundsError, "accessing string of length %d at index %d", len, i);
+// }
+// 
+// size_t _thisind_str(char *s, size_t n, size_t i)
+//     if (i == -1) return -1;
+//     if (i == n) return i;
+// 
+//     char b = s[i];
+//     if (!(b & 0xc0 == 0x80 && i-1 >= 0)) return i;
+// 
+//     b = s[i-1];
+//     if (0xc0 <= b && b <= 0xf7) // 0b11000000 ≤ b ≤ 0b11110111
+//         return i-1;
+//     if (!(b & 0xc0 == 0x80 && i-2 >= 0)) return i;
+// 
+//     b = s[i-2];
+//     if (0xe0 <= b && b <= 0xf7) // 0b11100000 ≤ b ≤ 0b11110111
+//         return i-2;
+//     if (!(b & 0xc0 == 0x80 && i-3 >= 0)) return i;
+// 
+//     b = s[i-3];
+//     if (0xf0 <= b && b <= 0xf7) // 0b11110000 ≤ b ≤ 0b11110111
+//         return i-3;
+//     return i;
+// }
+
+static uint32_t _getindex_continued(char *s, size_t n, size_t *i, uint32_t u) {
+    if (u < 0xc0000000) {
+        return u;
+        // // called from `getindex` which checks bounds
+        // if (_thisind_str(s, n, *i) == *i)
+        //     return u;
+        // bounds_error(n, i);
+    }
+
+    char b;
+
+    if (++*i >= n) return u;
+    b = s[*i]; // cont byte 1
+    if ((b & 0xc0) != 0x80) return u;
+    u |= (uint32_t)b << 16;
+
+    if (++*i >= n || u < 0xe0000000) return u;
+    b = s[*i]; // cont byte 2
+    if ((b & 0xc0) != 0x80) return u;
+    u |= (uint32_t)b << 8;
+
+    if (++*i >= n || u < 0xf0000000) return u;
+    b = s[*i]; // cont byte 3
+    if ((b & 0xc0) != 0x80) return u;
+    u |= (uint32_t)b;
+
+    return u;
+}
+
+static uint32_t _string_only_julia_char(char *s, size_t n) {
+    if (!(0 < n && n <= 4))
+        return -1;
+    size_t i = 0;
+    char b = s[i];
+    uint32_t u = (uint32_t)b << 24;
+    if (0x80 <= b && b <= 0xf7)
+        u = _getindex_continued(s, n, &i, u);
+    if (i < n-1)
+        return -1;
+    return u;
+}
+
+value_t fl_string_only_julia_char(fl_context_t *fl_ctx, value_t *args, uint32_t nargs) {
+    argcount(fl_ctx, "string.only-julia-char", nargs, 1);
+    if (!fl_isstring(fl_ctx, args[0]))
+        type_error(fl_ctx, "string.only-julia-char", "string", args[0]);
+    char *s = (char*)cvalue_data(args[0]);
+    size_t len = cv_len((cvalue_t*)ptr(args[0]));
+    uint32_t u = _string_only_julia_char(s, len);
+    if (u == -1)
+        return fl_ctx->F;
+    return fl_list2(fl_ctx, fl_ctx->jl_char_sym, mk_uint32(fl_ctx, u));
+}
+
 static const builtinspec_t julia_flisp_func_info[] = {
     { "skip-ws", fl_skipws },
     { "accum-julia-symbol", fl_accum_julia_symbol },
@@ -371,6 +452,7 @@ static const builtinspec_t julia_flisp_func_info[] = {
     { "strip-op-suffix", fl_julia_strip_op_suffix },
     { "underscore-symbol?", fl_julia_underscore_symbolp },
     { "string->normsymbol", fl_string2normsymbol },
+    { "string.only-julia-char", fl_string_only_julia_char },
     { NULL, NULL }
 };
 
