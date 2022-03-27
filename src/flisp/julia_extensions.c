@@ -436,9 +436,21 @@ value_t fl_string_only_julia_char(fl_context_t *fl_ctx, value_t *args, uint32_t 
         type_error(fl_ctx, "string.only-julia-char", "string", args[0]);
     char *s = (char*)cvalue_data(args[0]);
     size_t len = cv_len((cvalue_t*)ptr(args[0]));
-    uint32_t u = _string_only_julia_char(s, len);
-    if (u == -1)
+    if (!(0 < len && len <= 4))
         return fl_ctx->F;
+
+    uint32_t u = (uint32_t)s[0] << 24;
+    if (len == 1) goto ret;
+    u |= (uint32_t)s[1] << 16;
+    if (len == 2) goto ret;
+    u |= (uint32_t)s[2] << 8;
+    if (len == 3) goto ret;
+    u |= (uint32_t)s[3];
+
+    // uint32_t u = _string_only_julia_char(s, len);
+    // if (u == -1)
+    //     return fl_ctx->F;
+ret:
     return fl_list2(fl_ctx, fl_ctx->jl_char_sym, mk_uint32(fl_ctx, u));
 }
 
