@@ -956,7 +956,7 @@ which don't provide a separate closure environment parameter.
 
 ```julia
 function qsort(a::Vector{T}, cmp) where T
-    isbits(T) || throw(ArgumentError("this method can only qsort isbits arrays"))
+    isbitstype(T) || throw(ArgumentError("this method can only qsort isbits arrays"))
     callback = @cfunction $cmp Cint (Ref{T}, Ref{T})
     # Here, `callback` isa Base.CFunction, which will be converted to Ptr{Cvoid}
     # (and protected against finalization) by the ccall
